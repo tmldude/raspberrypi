@@ -149,7 +149,6 @@ class GUI:
         pass
 
     def runNavAlgo(self):
-        # self.boatController.updateSensors()
         self.boatController.sensors.position = coord.Vector(
             x=self.posXIn.value(), y=self.posYIn.value())
         self.waypoint = coord.Vector(x=self.targetXIn.value(),

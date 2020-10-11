@@ -100,6 +100,30 @@ class Vector:
         """
         return Vector(x=self.x - other.x, y=self.y - other.y)
 
+    def vectorAdd(self, other):
+        """Calculates the vector sum between two vectors.
+
+        Args:
+            other (Vector): The vector to add to 'self'.
+
+        Returns:
+            Vector: The vector sum between 'self' and 'other'.
+
+        """
+        return Vector(x=self.x + other.x, y=self.y + other.y)
+
+    def scale(self, scale):
+        """Scales the vector by a given value.
+
+        Args:
+            scale (float): The value to scale the vector by.
+
+        Returns:
+            Vector: The vector scaled by a given value.
+
+        """
+        return Vector(x=self.x * scale, y=self.y * scale)
+
     def dot(self, other):
         """Calculates the dot product of two vectors.
 
