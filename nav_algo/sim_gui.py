@@ -69,7 +69,21 @@ class GUI:
         # add a button to call startEventAlgo
         self.event_button = QtGui.QPushButton('Start Event Algorithm')
         self.event_button.clicked.connect(self.startEventAlgo)
-        self.event_layout.addWidget(self.event_button)
+        self.event_layout.addWidget(self.event_button, 1, 2)
+
+        # Testing: add a plot and some labels to see where the boat is
+        self.plot = pg.PlotWidget()
+        self.plot.showGrid(True, True, 0.3)
+        self.plot.hideButtons()
+        self.event_layout.addWidget(self.plot, 2, 0, 3, 3)
+        self.waypoint_label = QtGui.QLabel('Target: (x, y)')
+        self.event_layout.addWidget(self.waypoint_label, 5, 0)
+        self.time_label = QtGui.QLabel('Time: ts')
+        self.event_layout.addWidget(self.time_label, 5, 1)
+        self.angles_label = QtGui.QLabel('Sail, Tail: s, t')
+        self.event_layout.addWidget(self.angles_label, 5, 2)
+        self.int_angle_label = QtGui.QLabel('Intended: d')
+        self.event_layout.addWidget(self.int_angle_label, 6, 0)
 
         self.event_w.show()
 
@@ -141,12 +155,25 @@ class GUI:
         # TODO call the nav helper navigate function to move one step forward
         # TODO pass boat config to physics engine, update gui
         # TODO use physics engine output to update boat position.
-        print("starting")
         self.phys_eng.moveOneStep()
         if self.phys_eng.current_waypoint is None:
             self.event_w.timer.stop()
-        print("at {} {}".format(self.phys_eng.params.com_pos.x,
-                                self.phys_eng.params.com_pos.y))
+
+        pen = pg.mkPen((100, 0, 255))
+        brush = pg.mkBrush((100, 0, 255))
+        self.plot.plot([self.phys_eng.params.com_pos.x],
+                       [self.phys_eng.params.com_pos.y],
+                       symbolPen=pen,
+                       symbolBrush=brush,
+                       symbol="o")
+        self.time_label.setText('Time: {:.1f}s'.format(self.phys_eng.time))
+        self.waypoint_label.setText('Target: ({:.2f}, {:.2f})'.format(
+            self.phys_eng.current_waypoint.x,
+            self.phys_eng.current_waypoint.y))
+        self.angles_label.setText('Sail, Tail: {:.0f}, {:.0f}'.format(
+            self.phys_eng.params.theta_s, self.phys_eng.params.theta_r))
+        self.int_angle_label.setText('Intended: {:.2f}'.format(
+            self.phys_eng.intended_angle))
 
     def startEventAlgo(self):
         # TODO get type of event from the dropdown menu
@@ -173,7 +200,7 @@ class GUI:
         self.event = Events.STATION_KEEPING
 
         self.event_w.timer = QTimer()
-        self.event_w.timer.setInterval(1000)
+        self.event_w.timer.setInterval(10)
         self.event_w.timer.timeout.connect(self.runEventAlgo)
         self.event_w.timer.start()
 
