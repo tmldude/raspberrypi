@@ -1,5 +1,6 @@
 import nav_algo.coordinates as coord
 import nav_algo.boat as boat
+import math
 
 
 def newSailingAngle(boat, target):
@@ -89,8 +90,61 @@ def endurance():
     pass
 
 
-def stationKeeping():
-    pass
+def stationKeeping(boat_controller, waypoints, circle_radius, state):
+    if state == "ENTRY":
+        stationKeepingWaypoints = []  #Necessary waypoints
+        # entry point to the square
+        square_entry = waypoints[0].midpoint(waypoints[1])
+        stationKeepingWaypoints.append(square_entry)
+        # center of the sqaure
+        center = waypoints[0].midpoint(waypoints[2])
+        stationKeepingWaypoints.append(center)
+        waypoints = stationKeepingWaypoints
+        return
+    elif state == "KEEP":
+        # calculate the waypoints in the circle
+        x_coord = boat_controller.getPosition().x
+        y_coord = boat_controller.getPosition().y
+        pos = circle_radius * math.sqrt(2) / 2
+        way45 = ((pos) + x_coord, (pos) + y_coord)
+        way135 = (-(pos) + x_coord, (pos) + y_coord)
+        way225 = (-(pos) + x_coord, -(pos) + y_coord)
+        way315 = ((pos) + x_coord, -(pos) + y_coord)
+        circle_waypoints = [way45, way135, way225, way315]
+        # x//45: check distance to 1 and 7 and take the smaller one for each angle
+        # TODO x is a tuple...
+        # circle_waypoints = sorted(circle_waypoints,
+        #                           key=lambda x: min(abs(
+        #                               (x / 45) - 7), abs((x / 45) - 1)))
+        # # x % 45: check value and take smaller value
+        # circle_waypoints = sorted(circle_waypoints, lambda x: x % 45)
+        waypoints = circle_waypoints
+        return
+    elif state == "EXIT":
+        # corner waypoint order: NW, NE, SE, SW
+        # TODO: ask Courtney about the units of x-y coord
+        units_away = 10
+        # north exit
+        north_exit = waypoints[0].midpoint(waypoints[1])
+        north_exit.y += units_away
+        # east exit
+        east_exit = waypoints[1].midpoint(waypoints[2])
+        east_exit.x += units_away
+        #south exit
+        south_exit = waypoints[2].midpoint(waypoints[3])
+        south_exit.y -= units_away
+        #west exit
+        west_exit = waypoints[0].midpoint(waypoints[3])
+        west_exit.x -= units_away
+        # exit waypoint order in list: N, E, S, W
+        curr_pos = boat_controller.getPosition()
+        shortest_dist = min((curr_pos.xyDist(north_exit), north_exit),
+                            (curr_pos.xyDist(east_exit), east_exit),
+                            (curr_pos.xyDist(south_exit), south_exit),
+                            (curr_pos.xyDist(west_exit), west_exit),
+                            key=lambda x: x[0])
+        waypoints = [shortest_dist[1]]
+        return
 
 
 def precisionNavigation():

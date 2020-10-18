@@ -1,3 +1,5 @@
+from nav_algo.boat import BoatController
+from nav_algo.physics_engine import PhysicsEngine
 import nav_algo.boat as boat
 from nav_algo.events import Events
 from nav_algo.navigation_helper import *
@@ -139,14 +141,41 @@ class GUI:
         # TODO call the nav helper navigate function to move one step forward
         # TODO pass boat config to physics engine, update gui
         # TODO use physics engine output to update boat position.
-        pass
+        print("starting")
+        self.phys_eng.moveOneStep()
+        if self.phys_eng.current_waypoint is None:
+            self.event_w.timer.stop()
+        print("at {} {}".format(self.phys_eng.params.com_pos.x,
+                                self.phys_eng.params.com_pos.y))
 
     def startEventAlgo(self):
         # TODO get type of event from the dropdown menu
         # TODO get name of mock sensor file (maybe from a text box on gui)
         # TODO call the event function in nav helper
         # TODO call runEventAlgo every 0.1s(?) - use a QTimer
-        pass
+
+        # TODO everything below here is just for testing
+        boat_controller = BoatController(simulation=True)
+        boat_controller.sensors.position = coord.Vector(x=0, y=0)
+        boat_controller.sensors.yaw = 45.0
+        boat_controller.sensors.wind_direction = 25.0
+        boat_controller.sensors.wind_speed = 5.0
+
+        waypoints = [
+            coord.Vector(x=35, y=35),
+            coord.Vector(x=55, y=35),
+            coord.Vector(x=55, y=20),
+            coord.Vector(x=35, y=20)
+        ]
+
+        self.phys_eng = PhysicsEngine(boat_controller, waypoints)
+
+        self.event = Events.STATION_KEEPING
+
+        self.event_w.timer = QTimer()
+        self.event_w.timer.setInterval(1000)
+        self.event_w.timer.timeout.connect(self.runEventAlgo)
+        self.event_w.timer.start()
 
     def runNavAlgo(self):
         self.boatController.sensors.position = coord.Vector(

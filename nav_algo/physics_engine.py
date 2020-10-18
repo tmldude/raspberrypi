@@ -12,11 +12,15 @@ class PhysicsEngine():
 
         self.boat_controller = boat_controller
         self.waypoints = waypoints
+        self.current_waypoint = waypoints.pop(0)
+
         self.params = self.SimParams()
         self.params.com_pos = boat_controller.getPosition()
         self.params.v_wind = coord.Vector(
             angle=boat_controller.sensors.wind_direction)
         self.params.v_wind.scale(boat_controller.sensors.wind_speed)
+        self.params.theta_b = boat_controller.sensors.yaw
+
         self.timestep = 0.1  # seconds
         self.time = 0
         self.idx = 0
@@ -30,6 +34,7 @@ class PhysicsEngine():
     def moveOneStep(self):
         # run the nav algo every 2 mock seconds
         if self.time % 2 == 0:
+            print("did this")
             self.mockNavAlgo()
 
         self.z = np.array([
@@ -40,6 +45,14 @@ class PhysicsEngine():
 
         zdot = self.dynamics()
         self.z = np.add(zdot, np.multiply(self.z, self.timestep))
+        self.params.com_pos.x = self.z[0]
+        self.params.com_pos.y = self.z[1]
+        self.params.v_boat.x = self.z[2]
+        self.params.v_boat.y = self.z[3]
+        self.params.theta_b = self.z[4]
+        self.params.omega = self.z[5]
+        self.params.theta_r = self.z[6]
+        self.params.theta_s = self.z[7]
 
         self.idx += 1
         self.time = self.idx * self.timestep
@@ -53,15 +66,16 @@ class PhysicsEngine():
                 self.current_waypoint = None
                 return
 
-        intended_angle = newSailingAngle(self.boatController, self.waypoint)
-        sail_angle, tail_angle = self.boatController.getServoAngles(
+        intended_angle = newSailingAngle(self.boat_controller,
+                                         self.current_waypoint)
+        sail_angle, tail_angle = self.boat_controller.getServoAngles(
             intended_angle)
 
         self.params.theta_s = sail_angle + self.params.theta_b
         self.params.theta_r = tail_angle + sail_angle + self.params.theta_b
 
     def dynamics(self):
-        xdot = np.transpose(self.z[2:3])
+        xdot = np.transpose(self.z[2:4])
         thetadot = np.transpose(self.z[5])
         thetaboat = self.z[4]
         vr = np.array([self.params.v_wind.x, self.params.v_wind.y])
@@ -102,17 +116,17 @@ class PhysicsEngine():
         f_lr = np.multiply(
             CLr * self.params.area_rudder * .5 * self.params.rho_air *
             (np.linalg.norm(vr))**2, L)
-        f_lr = f_lr[:, 0:1]
+        f_lr = f_lr[0:2]
 
         f_lk = np.multiply(
             -CLk * self.params.area_keel * .5 * self.params.rho_water *
             (np.linalg.norm(xdot))**2, K)
-        f_lk = f_lk[:, 0:1]
+        f_lk = f_lk[0:2]
 
         f_ls = np.multiply(
             CLs * self.params.area_sail * .5 * self.params.rho_air *
             (np.linalg.norm(vr))**2, L)
-        f_ls = f_ls[:, 0:1]
+        f_ls = f_ls[0:2]
 
         f_ds = np.multiply(
             CDs * self.params.area_sail * .5 * self.params.rho_air *
@@ -158,44 +172,47 @@ class PhysicsEngine():
         sumM = np.add(m_r, m_k)
         sumM = np.add(sumM, m_s)
         sumM = np.add(sumM, m_h)
-        sumMM = sumM[:, 2]
+        sumMM = sumM[2]
 
         omegadot = 180.0 / np.pi * (1.0 / self.params.inertia * sumMM)
 
-        zdot = np.array(xdot[0], xdot[1], vdot[0], vdot[1], thetadot, omegadot,
-                        thetaruddot, thetasaildot)
+        zdot = np.array([
+            xdot[0], xdot[1], vdot[0], vdot[1], thetadot, omegadot,
+            thetaruddot, thetasaildot
+        ])
 
         return zdot
 
     def getAlphas(self):
         old_data = np.array(
-            pd.read_csv('simData/alphas.csv',
+            pd.read_csv('nav_algo/simData/alphas.csv',
                         delim_whitespace=True,
                         header=None))
         a = old_data[:, 1]
         cl = np.multiply(1.2, old_data[:, 2])
         cd = old_data[:, 3]
 
-        new_data = np.concatenate(a, cl, cd)
+        new_data = np.stack((a, cl, cd), axis=1)
 
+        # add symmetric values above 180 degrees
         new_a = np.subtract(360.0, a[1:-1])
         new_cl = np.multiply(-1.0, cl[1:-1])
         new_cd = cd[1:-1]
 
-        new_rows = np.concatenate(new_a, new_cl, new_cd)
-        new_data = np.concatenate(new_data, new_rows, axis=1)
+        new_rows = np.stack((new_a, new_cl, new_cd), axis=1)
+        new_data = np.concatenate((new_data, new_rows), axis=0)
 
         idx = np.argsort(new_data[:, 0])
         self.alpha_cl_cd = new_data[idx]
 
     def computeAlphas(self, vr, xdot):
-        self.theta_wind_rel = 180.0 / np.pi * np.atan2(vr[1], vr[0])
-        self.theta_boat_vel = 180.0 / np.pi * np.atan2(xdot[1], xdot[0])
+        self.theta_wind_rel = 180.0 / np.pi * np.arctan2(vr[1], vr[0])
+        self.theta_boat_vel = 180.0 / np.pi * np.arctan2(xdot[1], xdot[0])
 
-        balph_boat = self.theta_b - (self.theta_wind_rel + 180)
-        balph_s = balph_boat + self.theta_s
-        balph_r = balph_s + self.theta_r
-        balph_k = self.theta_b - self.theta_boat_vel
+        balph_boat = self.params.theta_b - (self.theta_wind_rel + 180)
+        balph_s = balph_boat + self.params.theta_s
+        balph_r = balph_s + self.params.theta_r
+        balph_k = self.params.theta_b - self.theta_boat_vel
 
         alph_boat = coord.rangeAngle(balph_boat)
         alph_r = coord.rangeAngle(balph_r)
