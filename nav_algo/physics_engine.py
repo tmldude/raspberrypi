@@ -1,17 +1,22 @@
 import nav_algo.coordinates as coord
+import nav_algo.boat
+from nav_algo.navigation_helper import *
 import numpy as np
 import scipy.interpolate
 import pandas as pd
 
 
 class PhysicsEngine():
-    def __init__(self, event, boat_pos, waypoints):
+    def __init__(self, boat_controller, waypoints):
         self.getAlphas()
 
-        self.event = event
+        self.boat_controller = boat_controller
         self.waypoints = waypoints
         self.params = self.SimParams()
-        self.params.com_pos = boat_pos
+        self.params.com_pos = boat_controller.getPosition()
+        self.params.v_wind = coord.Vector(
+            angle=boat_controller.sensors.wind_direction)
+        self.params.v_wind.scale(boat_controller.sensors.wind_speed)
         self.timestep = 0.1  # seconds
         self.time = 0
         self.idx = 0
@@ -40,14 +45,20 @@ class PhysicsEngine():
         self.time = self.idx * self.timestep
 
     def mockNavAlgo(self):
-        pass
+        # TODO detection radius
+        if self.params.com_pos.xyDist(self.current_waypoint) < 15.0:
+            if len(self.waypoints) > 0:
+                self.current_waypoint = self.waypoints.pop(0)
+            else:
+                self.current_waypoint = None
+                return
 
-    def computeServoAngles(self):
-        # TODO physics
-        tail = 20
-        sail = tail + 15
-        self.params.theta_r = tail + sail + self.params.theta_b
-        self.params.theta_s = sail + self.params.theta_b
+        intended_angle = newSailingAngle(self.boatController, self.waypoint)
+        sail_angle, tail_angle = self.boatController.getServoAngles(
+            intended_angle)
+
+        self.params.theta_s = sail_angle + self.params.theta_b
+        self.params.theta_r = tail_angle + sail_angle + self.params.theta_b
 
     def dynamics(self):
         xdot = np.transpose(self.z[2:3])
@@ -226,9 +237,6 @@ class PhysicsEngine():
         # boat and wind speeds
         v_boat = coord.Vector(x=0, y=0)
         v_wind = coord.Vector(x=0, y=-5)
-        v_wind_unit = v_wind.toUnitVector()
-        v_wind_rel = v_wind.vectorSubtract(v_boat)
-        v_wind_rel_unit = v_wind_rel.toUnitVector()
 
         # angles of rudder and sail wrt boat centerline
         theta_s = 0
