@@ -1,10 +1,14 @@
 import nav_algo.coordinates as coord
 import numpy as np
 import scipy.interpolate
+import pandas as pd
 
 
 class PhysicsEngine():
-    def __init__(self, boat_pos, waypoints):
+    def __init__(self, event, boat_pos, waypoints):
+        self.getAlphas()
+
+        self.event = event
         self.waypoints = waypoints
         self.params = self.SimParams()
         self.params.com_pos = boat_pos
@@ -38,6 +42,13 @@ class PhysicsEngine():
     def mockNavAlgo(self):
         pass
 
+    def computeServoAngles(self):
+        # TODO physics
+        tail = 20
+        sail = tail + 15
+        self.params.theta_r = tail + sail + self.params.theta_b
+        self.params.theta_s = sail + self.params.theta_b
+
     def dynamics(self):
         xdot = np.transpose(self.z[2:3])
         thetadot = np.transpose(self.z[5])
@@ -53,28 +64,21 @@ class PhysicsEngine():
         thetaruddot = self.params.theta_r
         thetasaildot = self.params.theta_s
 
-        alpha = self.computeAlpha()
+        alpha = self.alpha_cl_cd[:, 0]
+        cl = self.alpha_cl_cd[:, 1]
+        cd = self.alpha_cl_cd[:, 2]
 
-        # alpha=data(:,1);
-        # CL=data(:,2);
-        # CD=data(:,3);
-        # %interpolate data for exact alpha
-        # CLr=ppval(pchip(alpha,CL),(abs(alph.r)));
-        # CDr=ppval(pchip(alpha,CD),(abs(alph.r)));
-        # CLs=ppval(pchip(alpha,CL),(abs(alph.s)));
-        # CDs=ppval(pchip(alpha,CD),(abs(alph.s)));
-        # CLk=ppval(pchip(alpha,CL),(abs(alph.k)));
-        # CDk=ppval(pchip(alpha,CD),(abs(alph.k)));
-        # CDh=6.5; %based on Jesse Miller's experiments
-        # Cdamph=2; %based on Jesse Miller's experiments
-        CLr = 0
-        CLk = 0
-        CLs = 0
-        CDs = 0
-        CDk = 0
-        CDr = 0
-        CDh = 0
-        Cdamph = 0
+        _, alpha_s, alpha_r, alpha_k = self.computeAlphas(vr, xdot)
+
+        # interpolate data for exact alpha
+        CLr = scipy.interpolate.pchip_interpolate(alpha, cl, np.abs(alpha_r))
+        CDr = scipy.interpolate.pchip_interpolate(alpha, cd, np.abs(alpha_r))
+        CLs = scipy.interpolate.pchip_interpolate(alpha, cl, np.abs(alpha_s))
+        CDs = scipy.interpolate.pchip_interpolate(alpha, cd, np.abs(alpha_s))
+        CLk = scipy.interpolate.pchip_interpolate(alpha, cl, np.abs(alpha_k))
+        CDk = scipy.interpolate.pchip_interpolate(alpha, cd, np.abs(alpha_k))
+        CDh = 6.5  # based on Jesse Miller's experiments
+        Cdamph = 2  # based on Jesse Miller's experiments
 
         vv = np.array([vrn[0], vrn[1], 0])
         kk = np.array([0, 0, 1])
@@ -153,10 +157,41 @@ class PhysicsEngine():
         return zdot
 
     def getAlphas(self):
-        pass
+        old_data = np.array(
+            pd.read_csv('simData/alphas.csv',
+                        delim_whitespace=True,
+                        header=None))
+        a = old_data[:, 1]
+        cl = np.multiply(1.2, old_data[:, 2])
+        cd = old_data[:, 3]
 
-    def computeAlpha(self):
-        pass
+        new_data = np.concatenate(a, cl, cd)
+
+        new_a = np.subtract(360.0, a[1:-1])
+        new_cl = np.multiply(-1.0, cl[1:-1])
+        new_cd = cd[1:-1]
+
+        new_rows = np.concatenate(new_a, new_cl, new_cd)
+        new_data = np.concatenate(new_data, new_rows, axis=1)
+
+        idx = np.argsort(new_data[:, 0])
+        self.alpha_cl_cd = new_data[idx]
+
+    def computeAlphas(self, vr, xdot):
+        self.theta_wind_rel = 180.0 / np.pi * np.atan2(vr[1], vr[0])
+        self.theta_boat_vel = 180.0 / np.pi * np.atan2(xdot[1], xdot[0])
+
+        balph_boat = self.theta_b - (self.theta_wind_rel + 180)
+        balph_s = balph_boat + self.theta_s
+        balph_r = balph_s + self.theta_r
+        balph_k = self.theta_b - self.theta_boat_vel
+
+        alph_boat = coord.rangeAngle(balph_boat)
+        alph_r = coord.rangeAngle(balph_r)
+        alph_s = coord.rangeAngle(balph_s)
+        alph_k = coord.rangeAngle(balph_k)
+
+        return alph_boat, alph_s, alph_r, alph_k
 
     class SimParams():
         # SI Units (kg, m, s)
