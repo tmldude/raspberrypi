@@ -27,7 +27,7 @@ class GUI:
         exit_action.setShortcut("Ctrl+Q")
         exit_action.triggered.connect(lambda: exit(0))
 
-        ## Display the widget as a new window
+        # Display the widget as a new window
         self.intro_w.setWindowTitle("CUSail Simulator")
         self.intro_layout = QtGui.QGridLayout()
         self.intro_w.setLayout(self.intro_layout)
@@ -180,6 +180,29 @@ class GUI:
         # TODO get name of mock sensor file (maybe from a text box on gui)
         # TODO call the event function in nav helper
         # TODO call runEventAlgo every 0.1s(?) - use a QTimer
+
+        # TODO reads in data from the file, doesn't do anything with it yet
+        try:
+            file = open(self.file_input.text(), 'r')
+        except FileNotFoundError:
+            print("file '" + self.file_input.text() + "' could not be found")
+
+        event_name = file.readline().split(": ")[1]
+
+        start = file.readline().split(": ")
+        start_coords = start[1].split(", ")
+        start_x = float(start_coords[0])
+        start_y = float(start_coords[1])
+
+        wind = file.readline().split(", ")
+        wind_spd = float(wind[0].split(": ")[1])
+        wind_dir = float(wind[1].split(": ")[1])
+
+        file_waypoints = []
+        for line in file:
+            pt = line.split(", ")
+            v = coord.Vector(x=float(pt[0]), y=float(pt[1]))
+            file_waypoints.append(v)
 
         # TODO everything below here is just for testing
         boat_controller = BoatController(simulation=True)
