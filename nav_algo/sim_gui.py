@@ -182,27 +182,27 @@ class GUI:
         # TODO call runEventAlgo every 0.1s(?) - use a QTimer
 
         # TODO reads in data from the file, doesn't do anything with it yet
-        try:
-            file = open(self.file_input.text(), 'r')
-        except FileNotFoundError:
-            print("file '" + self.file_input.text() + "' could not be found")
+        # try:
+        #     file = open(self.file_input.text(), 'r')
+        # except FileNotFoundError:
+        #     print("file '" + self.file_input.text() + "' could not be found")
 
-        event_name = file.readline().split(": ")[1]
+        # event_name = file.readline().split(": ")[1]
 
-        start = file.readline().split(": ")
-        start_coords = start[1].split(", ")
-        start_x = float(start_coords[0])
-        start_y = float(start_coords[1])
+        # start = file.readline().split(": ")
+        # start_coords = start[1].split(", ")
+        # start_x = float(start_coords[0])
+        # start_y = float(start_coords[1])
 
-        wind = file.readline().split(", ")
-        wind_spd = float(wind[0].split(": ")[1])
-        wind_dir = float(wind[1].split(": ")[1])
+        # wind = file.readline().split(", ")
+        # wind_spd = float(wind[0].split(": ")[1])
+        # wind_dir = float(wind[1].split(": ")[1])
 
-        file_waypoints = []
-        for line in file:
-            pt = line.split(", ")
-            v = coord.Vector(x=float(pt[0]), y=float(pt[1]))
-            file_waypoints.append(v)
+        # file_waypoints = []
+        # for line in file:
+        #     pt = line.split(", ")
+        #     v = coord.Vector(x=float(pt[0]), y=float(pt[1]))
+        #     file_waypoints.append(v)
 
         # TODO everything below here is just for testing
         boat_controller = BoatController(simulation=True)

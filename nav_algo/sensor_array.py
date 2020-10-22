@@ -20,7 +20,7 @@ class sensorArray(sensorData):
         self.longitude = 0
         self.velocity = coord.Vector()
 
-    def updateAll(self):
+    def readAll(self):
         self.readGPS()
         self.readIMU()
         self.readWindDirection()

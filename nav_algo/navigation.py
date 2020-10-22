@@ -25,7 +25,7 @@ class NavigationController:
         boat_to_target (Vector): The vector from the boat to the target position.
 
     """
-    def __init__(self, event=None, waypoints=[], simulation=False):
+    def __init__(self, event=None, waypoints=[], simulation=False, test=False):
         self.DETECTION_RADIUS = 5.0
 
         if not simulation:
@@ -35,37 +35,39 @@ class NavigationController:
                 coord.Vector(self.coordinate_system, w[0], w[1])
                 for w in waypoints
             ]
-
-            self.boat = boat.BoatController(
-                coordinate_system=self.coordinate_system)
-
-            self.radio = radio.Radio()
-            self.radio.transmitString("Waiting for GPS fix...\n")
-
-            # wait until we know where we are
-            while not self.boat.sensors.fix:
-                self.boat.sensors.readGPS()  # ok if this is blocking
-
-            self.radio.transmitString(
-                "Established GPS fix. Beginning navigation...\n")
             self.current_waypoint = self.waypoints.pop(0)
 
-            if event == Events.ENDURANCE:
-                self.endurance()
-            elif event == Events.STATION_KEEPING:
-                self.stationKeeping()
-            elif event == Events.PRECISION_NAVIGATION:
-                self.precisionNavigation()
-            elif event == Events.COLLISION_AVOIDANCE:
-                self.collisionAvoidance()
-            elif event == Events.SEARCH:
-                self.search()
+            self.boat = boat.BoatController(
+                coordinate_system=self.coordinate_system, simulation=test)
 
-            self.navigate()
+            if not test:
+                self.radio = radio.Radio()
+                self.radio.transmitString("Waiting for GPS fix...\n")
+
+                # wait until we know where we are
+                while not self.boat.sensors.fix:
+                    self.boat.sensors.readGPS()  # ok if this is blocking
+
+                self.radio.transmitString(
+                    "Established GPS fix. Beginning navigation...\n")
+
+                if event == Events.ENDURANCE:
+                    self.endurance()
+                elif event == Events.STATION_KEEPING:
+                    self.stationKeeping()
+                elif event == Events.PRECISION_NAVIGATION:
+                    self.precisionNavigation()
+                elif event == Events.COLLISION_AVOIDANCE:
+                    self.collisionAvoidance()
+                elif event == Events.SEARCH:
+                    self.search()
+
+                self.navigate()
 
         else:
             self.boat = boat.BoatController(simulation=True)
-            self.gui = gui.GUI(self.boat)
+            if not test:
+                self.gui = gui.GUI(self.boat)
 
     def navigate(self):
         """ Execute the navigation algorithm.

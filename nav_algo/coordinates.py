@@ -164,6 +164,8 @@ class Vector:
 
         """
         mag = self.magnitude()
+        if np.abs(mag) < 0.00000001:
+            return Vector(x=0, y=0)
         return Vector(x=self.x / mag, y=self.y / mag)
 
     def inverse(self):

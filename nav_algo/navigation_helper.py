@@ -19,8 +19,8 @@ def newSailingAngle(boat, target):
 
     boat_to_target = target.vectorSubtract(boat.getPosition())
 
-    right_angle_max, right_vmg_max = optAngle(boat_to_target, boat, True)
-    left_angle_max, left_vmg_max = optAngle(boat_to_target, boat, False)
+    right_angle_max, right_vmg_max = optAngle(boat, target, True)
+    left_angle_max, left_vmg_max = optAngle(boat, target, False)
 
     boat_heading = boat.sensors.velocity.angle()
     hysterisis = 1.0 + (beating / boat_to_target.magnitude())
@@ -35,7 +35,7 @@ def newSailingAngle(boat, target):
     return sailing_angle
 
 
-def optAngle(boat_to_target, boat, right):
+def optAngle(boat, target, right):
     """TODO Determines the best angle to sail on either side of the wind.
 
         The "best angle" maximizes the velocity made good toward the target.
@@ -53,6 +53,7 @@ def optAngle(boat_to_target, boat, right):
     best_vmg = 0.0
     wind_angle = boat.sensors.wind_direction
     best_angle = wind_angle
+    boat_to_target = target.vectorSubtract(boat.getPosition())
 
     while alpha < 180:
         vel = polar(alpha if right else -1.0 * alpha, boat)
