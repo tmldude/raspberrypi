@@ -84,6 +84,8 @@ class GUI:
         self.event_layout.addWidget(self.angles_label, 5, 2)
         self.int_angle_label = QtGui.QLabel('Intended: d')
         self.event_layout.addWidget(self.int_angle_label, 6, 0)
+        self.wind_angle_label = QtGui.QLabel('Wind: w')
+        self.event_layout.addWidget(self.wind_angle_label, 6, 1)
 
         self.event_w.show()
 
@@ -148,6 +150,9 @@ class GUI:
         self.tailAngLab = QtGui.QLabel('Tail Angle: --')
         self.nav_layout.addWidget(self.tailAngLab, 2, 4)
 
+        self.boat_widget = BoatWidget()
+        self.nav_layout.addWidget(self.boat_widget, 0, 5, 7, 7)
+
         self.nav_w.show()
 
     def runEventAlgo(self):
@@ -174,6 +179,8 @@ class GUI:
             self.phys_eng.params.theta_s, self.phys_eng.params.theta_r))
         self.int_angle_label.setText('Intended: {:.2f}'.format(
             self.phys_eng.intended_angle))
+        self.wind_angle_label.setText('Wind: {:.2f}'.format(
+            self.phys_eng.params.v_wind.angle()))
 
     def startEventAlgo(self):
         # TODO get type of event from the dropdown menu
@@ -209,10 +216,11 @@ class GUI:
         boat_controller.sensors.position = coord.Vector(x=0, y=0)
         boat_controller.sensors.yaw = 45.0
         boat_controller.sensors.wind_direction = 25.0
+        # boat_controller.sensors.wind_direction = 0.0
         boat_controller.sensors.wind_speed = 5.0
 
         waypoints = [
-            coord.Vector(x=35, y=35),
+            coord.Vector(x=0, y=35),
             coord.Vector(x=55, y=35),
             coord.Vector(x=55, y=20),
             coord.Vector(x=35, y=20)
@@ -234,16 +242,130 @@ class GUI:
                                      y=self.targetYIn.value())
 
         self.boatController.sensors.wind_direction = self.windDirIn.value()
+        # ignored for now
         self.boatController.sensors.wind_speed = self.windSpeedIn.value()
 
         self.boatController.sensors.roll = self.rollIn.value()
         self.boatController.sensors.pitch = self.pitchIn.value()
-        self.boatController.sensors.yaw = self.yawIn.value()
+        self.boatController.sensors.yaw = initYaw = self.yawIn.value()
 
-        intended_angle = newSailingAngle(self.boatController, self.waypoint)
-        sail_angle, tail_angle = self.boatController.getServoAngles(
-            intended_angle)
+        self.phys_eng = PhysicsEngine(self.boatController, [self.waypoint])
+        self.phys_eng.moveOneStep(True)
 
-        self.intAngLab.setText('Intended Angle: ' + str(intended_angle))
-        self.sailAngLab.setText('Sail Angle: ' + str(sail_angle))
-        self.tailAngLab.setText('Tail Angle: ' + str(tail_angle))
+        self.intAngLab.setText('Intended Angle: ' +
+                               str(self.phys_eng.intended_angle))
+        self.sailAngLab.setText('Sail Angle: ' +
+                                str(self.phys_eng.params.theta_s))
+        self.tailAngLab.setText('Tail Angle: ' +
+                                str(self.phys_eng.params.theta_r))
+
+        self.boat_widget.setAngles(initYaw,
+                                   self.phys_eng.params.v_wind.angle(),
+                                   self.boatController.sensors.yaw,
+                                   self.phys_eng.params.theta_s,
+                                   self.phys_eng.params.theta_r)
+
+
+class BoatWidget(QWidget):
+    angleChanged = pyqtSignal(float, float, float, float, float)
+
+    def __init__(self, parent=None):
+        QWidget.__init__(self, parent)
+
+        self.boat_angle = 0.0  # wrt global frame
+        self.wind_angle = 0.0  # wrt global frame (incident on boat)
+        self.vel_angle = 0.0  # wrt global frame
+        self.sail_angle = 0.0  # wrt boat
+        self.tail_angle = 0.0  # wrt mainsail
+
+    def paintEvent(self, event):
+        painter = QPainter()
+        painter.begin(self)
+        painter.setRenderHint(QPainter.Antialiasing)
+
+        painter.fillRect(event.rect(), self.palette().brush(QPalette.Window))
+        self.drawBoat(painter)
+
+        painter.end()
+
+    def drawBoat(self, painter):
+        painter.save()
+
+        painter.translate(self.width() / 2, self.height() / 2)
+        painter.rotate(-1.0 * self.boat_angle)
+        scale = min((self.width() - 10) / 120.0, (self.height() - 10) / 120.0)
+        painter.scale(scale, scale)
+        painter.setPen(QPen(Qt.NoPen))
+        painter.setBrush(self.palette().brush(QPalette.Shadow))
+
+        painter.drawChord(QRectF(-45, -10, 90, 20), 90 * 16, 180 * 16)
+        painter.drawChord(QRectF(-45, -10, 90, 20), 270 * 16, 180 * 16)
+
+        painter.setBrush(QColor(0, 44, 95))
+
+        sail_length = 30.0
+        tail_length = 20.0
+
+        painter.setPen(QColor(101, 201, 208))
+
+        sail_end_x = 22.5 + sail_length * np.cos(
+            np.deg2rad(180.0 - self.sail_angle))
+        sail_end_y = sail_length * np.sin(np.deg2rad(180.0 - self.sail_angle))
+        painter.drawLine(22.5, 0, sail_end_x, sail_end_y)
+
+        painter.setPen(QColor(179, 27, 27))
+        tail_end_x = sail_end_x + tail_length * np.cos(
+            np.deg2rad(180.0 - (self.sail_angle + self.tail_angle)))
+        tail_end_y = sail_end_y + tail_length * np.sin(
+            np.deg2rad(180.0 - (self.sail_angle + self.tail_angle)))
+        painter.drawLine(sail_end_x, sail_end_y, tail_end_x, tail_end_y)
+
+        vel_length = 30.0
+        painter.translate(45, 0)
+        painter.rotate(-1.0 * self.vel_angle + self.boat_angle)
+        self.drawArrow(painter, vel_length, Qt.darkRed, Qt.darkRed)
+
+        wind_length = 20.0
+        painter.translate(70, 20)
+        painter.rotate(180 - self.wind_angle + self.vel_angle)
+        self.drawArrow(painter, wind_length, Qt.darkCyan, Qt.darkCyan)
+
+        painter.restore()
+
+    def drawArrow(self, painter, length, pen, brush):
+        painter.save()
+
+        painter.setPen(pen)
+        painter.setBrush(brush)
+        painter.drawLine(0, 0, length, 0)
+        painter.drawPolygon(
+            QPolygon([
+                QPoint(length, 0),
+                QPoint(length, -5),
+                QPoint(length + 10, 0),
+                QPoint(length, 5),
+            ]))
+
+        painter.restore()
+
+    def sizeHint(self):
+        return QSize(500, 500)
+
+    def angle(self):
+        return self.boat_angle, self.wind_angle, self.vel_angle, self.sail_angle, self.tail_angle
+
+    # @pyqtSlot(float)
+    def setAngles(self, boat_angle, wind_angle, vel_angle, sail_angle,
+                  tail_angle):
+        if not (boat_angle == self.boat_angle and wind_angle == self.wind_angle
+                and vel_angle == self.vel_angle
+                and sail_angle == self.sail_angle
+                and tail_angle == self.tail_angle):
+            self.boat_angle = boat_angle
+            self.wind_angle = wind_angle
+            self.vel_angle = vel_angle
+            self.sail_angle = sail_angle
+            self.tail_angle = tail_angle
+            self.angleChanged.emit(boat_angle, wind_angle, vel_angle,
+                                   sail_angle, tail_angle)
+            self.update()

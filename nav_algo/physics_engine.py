@@ -31,9 +31,10 @@ class PhysicsEngine():
             self.params.theta_r, self.params.theta_s
         ])
 
-    def moveOneStep(self):
+    def moveOneStep(self, override=False):
         # run the nav algo every 2 mock seconds
-        if self.time % 2 < 0.001:
+        if override or self.time % 2 < 0.001:
+            print("ok")
             self.mockNavAlgo()
 
         zdot = self.dynamics()
@@ -52,6 +53,10 @@ class PhysicsEngine():
         self.params.theta_b = self.z[4]
         self.params.omega = self.z[5]
 
+        # proxy yaw by direction of motion -- bad but not too far off (hopefully)
+        self.boat_controller.sensors.yaw = coord.Vector(
+            x=self.params.v_boat.x, y=self.params.v_boat.y).angle()
+
         self.idx += 1
         self.time = self.idx * self.timestep
 
@@ -69,8 +74,11 @@ class PhysicsEngine():
         sail_angle, tail_angle = self.boat_controller.getServoAngles(
             self.intended_angle)
 
-        self.params.theta_s = sail_angle + self.params.theta_b
-        self.params.theta_r = tail_angle + sail_angle + self.params.theta_b
+        # self.params.theta_s = sail_angle + self.params.theta_b
+        # self.params.theta_r = tail_angle + sail_angle + self.params.theta_b
+
+        self.params.theta_s = sail_angle
+        self.params.theta_r = tail_angle + sail_angle
 
     def dynamics(self):
         xdot = self.z[2:4]

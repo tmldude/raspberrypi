@@ -32,6 +32,7 @@ def newSailingAngle(boat, target):
                               and left_vmg_max * hysterisis >= right_vmg_max):
         sailing_angle = left_angle_max
 
+    print(sailing_angle)
     return sailing_angle
 
 
