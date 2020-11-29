@@ -76,16 +76,20 @@ class GUI:
         self.plot.showGrid(True, True, 0.3)
         self.plot.hideButtons()
         self.event_layout.addWidget(self.plot, 2, 0, 3, 3)
+
+        self.boat_widget = BoatWidget()
+        self.event_layout.addWidget(self.boat_widget, 5, 0, 3, 3)
+
         self.waypoint_label = QtGui.QLabel('Target: (x, y)')
-        self.event_layout.addWidget(self.waypoint_label, 5, 0)
+        self.event_layout.addWidget(self.waypoint_label, 8, 0)
         self.time_label = QtGui.QLabel('Time: ts')
-        self.event_layout.addWidget(self.time_label, 5, 1)
+        self.event_layout.addWidget(self.time_label, 8, 1)
         self.angles_label = QtGui.QLabel('Sail, Tail: s, t')
-        self.event_layout.addWidget(self.angles_label, 5, 2)
+        self.event_layout.addWidget(self.angles_label, 8, 2)
         self.int_angle_label = QtGui.QLabel('Intended: d')
-        self.event_layout.addWidget(self.int_angle_label, 6, 0)
+        self.event_layout.addWidget(self.int_angle_label, 9, 0)
         self.wind_angle_label = QtGui.QLabel('Wind: w')
-        self.event_layout.addWidget(self.wind_angle_label, 6, 1)
+        self.event_layout.addWidget(self.wind_angle_label, 9, 1)
 
         self.event_w.show()
 
@@ -160,6 +164,7 @@ class GUI:
         # TODO call the nav helper navigate function to move one step forward
         # TODO pass boat config to physics engine, update gui
         # TODO use physics engine output to update boat position.
+        initYaw = self.phys_eng.boat_controller.sensors.yaw
         self.phys_eng.moveOneStep()
         if self.phys_eng.current_waypoint is None:
             self.event_w.timer.stop()
@@ -181,6 +186,12 @@ class GUI:
             self.phys_eng.intended_angle))
         self.wind_angle_label.setText('Wind: {:.2f}'.format(
             self.phys_eng.params.v_wind.angle()))
+
+        # TODO why doesn't yaw change?
+        self.boat_widget.setAngles(
+            initYaw, self.phys_eng.params.v_wind.angle(),
+            self.boatController.sensors.yaw, self.phys_eng.params.theta_s,
+            self.phys_eng.params.theta_r - self.phys_eng.params.theta_s)
 
     def startEventAlgo(self):
         # TODO get type of event from the dropdown menu
