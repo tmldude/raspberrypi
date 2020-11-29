@@ -97,7 +97,7 @@ class BoatController:
             tail = 30 if cur_offset <= 0 else -30
 
         sail = 30
-        tail = 15
+        tail = -15
 
         return sail, tail
 

@@ -257,13 +257,13 @@ class GUI:
         self.sailAngLab.setText('Sail Angle: ' +
                                 str(self.phys_eng.params.theta_s))
         self.tailAngLab.setText('Tail Angle: ' +
-                                str(self.phys_eng.params.theta_r))
+                                str(self.phys_eng.params.theta_r -
+                                    self.phys_eng.params.theta_s))
 
-        self.boat_widget.setAngles(initYaw,
-                                   self.phys_eng.params.v_wind.angle(),
-                                   self.boatController.sensors.yaw,
-                                   self.phys_eng.params.theta_s,
-                                   self.phys_eng.params.theta_r)
+        self.boat_widget.setAngles(
+            initYaw, self.phys_eng.params.v_wind.angle(),
+            self.boatController.sensors.yaw, self.phys_eng.params.theta_s,
+            self.phys_eng.params.theta_r - self.phys_eng.params.theta_s)
 
 
 class BoatWidget(QWidget):
