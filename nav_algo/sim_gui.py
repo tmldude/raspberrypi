@@ -164,7 +164,7 @@ class GUI:
         # TODO call the nav helper navigate function to move one step forward
         # TODO pass boat config to physics engine, update gui
         # TODO use physics engine output to update boat position.
-        initYaw = self.phys_eng.boat_controller.sensors.yaw
+        initYaw = self.phys_eng.params.theta_b
         self.phys_eng.moveOneStep()
         if self.phys_eng.current_waypoint is None:
             self.event_w.timer.stop()
@@ -190,7 +190,7 @@ class GUI:
         # TODO why doesn't yaw change?
         self.boat_widget.setAngles(
             initYaw, self.phys_eng.params.v_wind.angle(),
-            self.boatController.sensors.yaw, self.phys_eng.params.theta_s,
+            self.phys_eng.params.theta_b, self.phys_eng.params.theta_s,
             self.phys_eng.params.theta_r - self.phys_eng.params.theta_s)
 
     def startEventAlgo(self):
