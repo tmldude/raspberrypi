@@ -34,7 +34,6 @@ class PhysicsEngine():
     def moveOneStep(self, override=False):
         # run the nav algo every 2 mock seconds
         if override or self.time % 2 < 0.001:
-            print("ok")
             self.mockNavAlgo()
 
         zdot = self.dynamics()
@@ -53,9 +52,15 @@ class PhysicsEngine():
         self.params.theta_b = self.z[4]
         self.params.omega = self.z[5]
 
+        print('boat velocity {}, {}; position {}, {}'.format(
+            self.params.v_boat.x, self.params.v_boat.y, self.params.com_pos.x,
+            self.params.com_pos.y))
+
         # proxy yaw by direction of motion -- bad but not too far off (hopefully)
         self.boat_controller.sensors.yaw = coord.Vector(
             x=self.params.v_boat.x, y=self.params.v_boat.y).angle()
+
+        print('yaw {}'.format(self.boat_controller.sensors.yaw))
 
         self.idx += 1
         self.time = self.idx * self.timestep
@@ -73,9 +78,6 @@ class PhysicsEngine():
                                               self.current_waypoint)
         sail_angle, tail_angle = self.boat_controller.getServoAngles(
             self.intended_angle)
-
-        # self.params.theta_s = sail_angle + self.params.theta_b
-        # self.params.theta_r = tail_angle + sail_angle + self.params.theta_b
 
         self.params.theta_s = sail_angle
         self.params.theta_r = tail_angle + sail_angle
@@ -215,7 +217,8 @@ class PhysicsEngine():
         self.theta_wind_rel = np.rad2deg(np.arctan2(vr[1], vr[0]))
         self.theta_boat_vel = np.rad2deg(np.arctan2(xdot[1], xdot[0]))
 
-        balph_boat = self.params.theta_b - (self.theta_wind_rel + 180)
+        # balph_boat = self.params.theta_b - (self.theta_wind_rel + 180)
+        balph_boat = self.params.theta_b - self.theta_wind_rel
         balph_s = balph_boat + self.params.theta_s
         balph_r = balph_s + self.params.theta_r
         balph_k = self.params.theta_b - self.theta_boat_vel

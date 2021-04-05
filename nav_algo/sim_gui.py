@@ -169,13 +169,13 @@ class GUI:
         if self.phys_eng.current_waypoint is None:
             self.event_w.timer.stop()
 
-        pen = pg.mkPen((100, 0, 255))
-        brush = pg.mkBrush((100, 0, 255))
+        pen = pg.mkPen((50, 0, 255))
+        brush = pg.mkBrush((50, 0, 255))
         self.plot.plot([self.phys_eng.params.com_pos.x],
                        [self.phys_eng.params.com_pos.y],
                        symbolPen=pen,
                        symbolBrush=brush,
-                       symbol="o")
+                       symbol="x")
         self.time_label.setText('Time: {:.1f}s'.format(self.phys_eng.time))
         self.waypoint_label.setText('Target: ({:.2f}, {:.2f})'.format(
             self.phys_eng.current_waypoint.x,
@@ -226,9 +226,9 @@ class GUI:
         boat_controller = BoatController(simulation=True)
         boat_controller.sensors.position = coord.Vector(x=0, y=0)
         boat_controller.sensors.yaw = 45.0
-        boat_controller.sensors.wind_direction = 25.0
+        boat_controller.sensors.wind_direction = 205.0
         # boat_controller.sensors.wind_direction = 0.0
-        boat_controller.sensors.wind_speed = 5.0
+        boat_controller.sensors.wind_speed = 1.0
 
         waypoints = [
             coord.Vector(x=0, y=35),
@@ -306,8 +306,9 @@ class BoatWidget(QWidget):
         painter.rotate(-1.0 * self.boat_angle)
         scale = min((self.width() - 10) / 120.0, (self.height() - 10) / 120.0)
         painter.scale(scale, scale)
-        painter.setPen(QPen(Qt.NoPen))
-        painter.setBrush(self.palette().brush(QPalette.Shadow))
+        painter.setPen(Qt.black)
+        # painter.setBrush(self.palette().brush(QPalette.Shadow))
+        painter.setBrush(QBrush(Qt.NoBrush))
 
         painter.drawChord(QRectF(-45, -10, 90, 20), 90 * 16, 180 * 16)
         painter.drawChord(QRectF(-45, -10, 90, 20), 270 * 16, 180 * 16)
