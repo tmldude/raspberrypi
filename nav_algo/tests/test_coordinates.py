@@ -1,7 +1,6 @@
 import unittest
 import sys
-sys.path.append("..")
-import coordinates as coord
+import nav_algo.coordinates as coord
 
 
 upson_hall = (42.444241, 76.481933)
